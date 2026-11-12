@@ -12,19 +12,19 @@ import {
   CheckCircle2, 
   XCircle, 
   Search, 
-  Activity,
-  Layers,
-  Radio,
-  History,
-  Target,
-  Percent,
-  CheckCircle,
-  ExternalLink,
-  Zap,
-  AlertTriangle,
-  FileText,
-  Info,
-  Copy,
+  Activity, 
+  Layers, 
+  Radio, 
+  History, 
+  Target, 
+  Percent, 
+  CheckCircle, 
+  ExternalLink, 
+  Zap, 
+  AlertTriangle, 
+  FileText, 
+  Info, 
+  Copy, 
   Check
 } from 'lucide-react';
 
@@ -78,25 +78,239 @@ function calculateLuoShuChart(centerStarId, isDuongDon = true) {
   return chart;
 }
 
-// BỘ TÍNH TOÁN BỘ SỐ CỬU TINH NGÀY HIỆN TẠI (TODAY ENGINE)
-const TODAY_CONFIG = {
-  date: "11/11/2026",
-  dayOfWeek: "Thứ Tư",
-  province: "Bắc Ninh",
-  ganZhi: "Canh Ngọ (Thổ)",
-  solarTerm: "Lập Đông (Âm Độn)",
-  centerStar: 2, // Nhị Hắc Cự Môn nhập trung cung (Âm Độn)
-  isDuongDon: false,
-  btl: "58",
-  stl: ["39", "93"],
-  ttl: ["27", "72", "85"],
-  threeClawSix: ["258", "758", "958", "439", "839", "693"],
-  cuuTinhScore: 97.4,
-  explanation: "Ngày Canh Ngọ (Lộ Bàng Thổ) gặp Tiết Lập Đông (Âm Độn), Nhị Hắc Thổ Tinh quy Trung Cung kết hợp Ly Cung Cửu Tử Hỏa vượng sinh Thổ. Quẻ quy tụ BTL 58 (Cung Cấn - Khôn tương phò), STL 39-93 trục Lạc Thư Âm Dương đối đãi."
-};
+// --- BỘ TÍNH TOÁN CAN CHI, TIẾT KHÍ & PHI TINH TỰ ĐỘNG THEO NGÀY ---
+const HEAVENLY_STEMS = ["Giáp", "Ất", "Bính", "Đinh", "Mậu", "Kỷ", "Canh", "Tân", "Nhâm", "Quý"];
+const EARTHLY_BRANCHES = ["Tý", "Sửu", "Dần", "Mão", "Thìn", "Tỵ", "Ngọ", "Mùi", "Thân", "Dậu", "Tuất", "Hợi"];
+const NAYIN_ELEMENTS = [
+  "Hải Trung Kim", "Lư Trung Hỏa", "Đại Lâm Mộc", "Lộ Bàng Thổ", "Kiếm Phong Kim",
+  "Sơn Đầu Hỏa", "Giản Hạ Thủy", "Thành Đầu Thổ", "Bạch Lạp Kim", "Dương Liễu Mộc",
+  "Tuyền Trung Thủy", "Ốc Thượng Thổ", "Tích Lịch Hỏa", "Tùng Bách Mộc", "Trường Lưu Thủy",
+  "Sa Trung Kim", "Sơn Hạ Hỏa", "Bình Địa Mộc", "Bích Thượng Thổ", "Kim Bạch Kim",
+  "Phú Đăng Hỏa", "Thiên Hà Thủy", "Đại Dịch Thổ", "Thoa Xuyến Kim", "Tang Đố Mộc",
+  "Đại Khê Thủy", "Sa Trung Thổ", "Thiên Thượng Hỏa", "Thạch Lựu Mộc", "Đại Hải Thủy"
+];
+const XSMB_PROVINCES_BY_DAY = [
+  "Thái Bình",  // 0: Chủ Nhật
+  "Hà Nội",     // 1: Thứ Hai
+  "Quảng Ninh", // 2: Thứ Ba
+  "Bắc Ninh",   // 3: Thứ Tư
+  "Hà Nội",     // 4: Thứ Năm
+  "Hải Phòng",  // 5: Thứ Sáu
+  "Nam Định"    // 6: Thứ Bảy
+];
+const VIETNAMESE_DAYS = ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
+
+function getSolarTermInfo(dateObj) {
+  const m = dateObj.getMonth() + 1;
+  const d = dateObj.getDate();
+  const mmdd = m * 100 + d;
+
+  // Dương Độn từ Đông Chí (~21/12) đến trước Hạ Chí (~21/06)
+  // Âm Độn từ Hạ Chí (~21/06) đến trước Đông Chí (~21/12)
+  const isDuongDon = mmdd >= 1221 || mmdd < 621;
+
+  let termName = "Lập Đông";
+  if (mmdd >= 1107 && mmdd < 1122) termName = "Lập Đông";
+  else if (mmdd >= 1122 && mmdd < 1207) termName = "Tiểu Tuyết";
+  else if (mmdd >= 1207 && mmdd < 1221) termName = "Đại Tuyết";
+  else if (mmdd >= 1221 || mmdd < 105) termName = "Đông Chí";
+  else if (mmdd >= 105 && mmdd < 120) termName = "Tiểu Hàn";
+  else if (mmdd >= 120 && mmdd < 204) termName = "Đại Hàn";
+  else if (mmdd >= 204 && mmdd < 219) termName = "Lập Xuân";
+  else if (mmdd >= 219 && mmdd < 305) termName = "Vũ Thủy";
+  else if (mmdd >= 305 && mmdd < 320) termName = "Kinh Trập";
+  else if (mmdd >= 320 && mmdd < 404) termName = "Xuân Phân";
+  else if (mmdd >= 404 && mmdd < 420) termName = "Thanh Minh";
+  else if (mmdd >= 420 && mmdd < 505) termName = "Cốc Vũ";
+  else if (mmdd >= 505 && mmdd < 521) termName = "Lập Hạ";
+  else if (mmdd >= 521 && mmdd < 605) termName = "Tiểu Mãn";
+  else if (mmdd >= 605 && mmdd < 621) termName = "Mang Chủng";
+  else if (mmdd >= 621 && mmdd < 707) termName = "Hạ Chí";
+  else if (mmdd >= 707 && mmdd < 722) termName = "Tiểu Thử";
+  else if (mmdd >= 722 && mmdd < 807) termName = "Đại Thử";
+  else if (mmdd >= 807 && mmdd < 823) termName = "Lập Thu";
+  else if (mmdd >= 823 && mmdd < 907) termName = "Xử Thử";
+  else if (mmdd >= 907 && mmdd < 923) termName = "Bạch Lộ";
+  else if (mmdd >= 923 && mmdd < 1008) termName = "Thu Phân";
+  else if (mmdd >= 1008 && mmdd < 1023) termName = "Hàn Lộ";
+  else if (mmdd >= 1023 && mmdd < 1107) termName = "Sương Giáng";
+
+  return {
+    termName,
+    isDuongDon,
+    label: `${termName} (${isDuongDon ? "Dương Độn" : "Âm Độn"})`
+  };
+}
+
+// Tính Can Chi, Sao Trung Cung và tự động tổng hợp bộ số Cửu Tinh cho bất kỳ ngày nào
+function generateDailyCuuTinhForecast(targetDate, historyList) {
+  const year = targetDate.getFullYear();
+  const month = targetDate.getMonth();
+  const day = targetDate.getDate();
+
+  // Mốc chuẩn: 11/11/2026 là Canh Ngọ (index 6 trong 60 Hoa Giáp), Trung Cung Nhị Hắc (2)
+  const anchorUtc = Date.UTC(2026, 10, 11);
+  const targetUtc = Date.UTC(year, month, day);
+  const diffDays = Math.round((targetUtc - anchorUtc) / 86400000);
+
+  const cycle60Index = ((6 + diffDays) % 60 + 60) % 60;
+  const stem = HEAVENLY_STEMS[cycle60Index % 10];
+  const branch = EARTHLY_BRANCHES[cycle60Index % 12];
+  const nayin = NAYIN_ELEMENTS[Math.floor(cycle60Index / 2)];
+  const elementShort = nayin.split(" ").pop();
+
+  const solarTermInfo = getSolarTermInfo(targetDate);
+  // Âm Độn bay nghịch (-1 mỗi ngày), Dương Độn bay thuận (+1 mỗi ngày)
+  const centerStar = solarTermInfo.isDuongDon
+    ? ((2 - 1 + diffDays) % 9 + 9) % 9 + 1
+    : ((2 - 1 - diffDays) % 9 + 9) % 9 + 1;
+
+  const luoShu = calculateLuoShuChart(centerStar, solarTermInfo.isDuongDon);
+
+  // Thống kê tần suất & nhịp gan từ lịch sử thực tế mới nhất (bao gồm kỳ 11/11/2026)
+  const freqMap = {};
+  for (let i = 0; i < 100; i++) {
+    const key = i.toString().padStart(2, "0");
+    freqMap[key] = { count: 0, lastSeen: -1 };
+  }
+
+  historyList.forEach((period, pIdx) => {
+    const parsed = parse27Prizes(period.prizes);
+    parsed.loto2DList.forEach(num => {
+      if (freqMap[num]) {
+        freqMap[num].count += 1;
+        if (freqMap[num].lastSeen === -1) freqMap[num].lastSeen = pIdx;
+      }
+    });
+  });
+
+  // Chấm điểm từng số 00-99 dựa trên Lạc Thư Cửu Tinh ngày mới + Tần suất xskt
+  const candidates = [];
+  const auspiciousPalaceStars = Object.values(luoShu)
+    .filter(c => c.star.id === 9 || c.star.id === 8 || c.star.id === 1 || c.star.id === 6)
+    .map(c => c.palace.baguaNum);
+
+  for (let i = 0; i < 100; i++) {
+    const numStr = i.toString().padStart(2, "0");
+    const d1 = parseInt(numStr[0], 10);
+    const d2 = parseInt(numStr[1], 10);
+    const palaceKey = ((i % 9) + 1);
+    const cell = luoShu[palaceKey];
+
+    const starBonus = (cell.star.id === 9 || cell.star.id === 8) ? 24 : (cell.star.id === 1 || cell.star.id === 6) ? 18 : 8;
+    const palaceMatchBonus = (auspiciousPalaceStars.includes(d1) || auspiciousPalaceStars.includes(d2)) ? 10 : 0;
+    const { count, lastSeen } = freqMap[numStr];
+    const ganScore = lastSeen === -1 ? 4 : (lastSeen >= 1 && lastSeen <= 4 ? 14 : 6);
+    const daySeedHash = ((cycle60Index * 17 + i * 31 + centerStar * 13) % 19);
+
+    const score = 52 + starBonus + palaceMatchBonus + Math.min(18, count * 4) + ganScore + (daySeedHash / 10);
+    candidates.push({
+      number: numStr,
+      score,
+      count,
+      gan: lastSeen === -1 ? 8 : lastSeen,
+      palaceName: cell.palace.name,
+      starName: cell.star.name
+    });
+  }
+
+  candidates.sort((a, b) => b.score - a.score);
+
+  // 1. Bạch Thủ Lô (BTL)
+  const btlObj = candidates[0];
+  const btl = btlObj.number;
+
+  // 2. Song Thủ Lô (STL): Cặp số đảo Âm Dương đối đãi
+  let stlLead = candidates.find(c => c.number !== btl && c.number[0] !== c.number[1])?.number || "49";
+  let stlRev = stlLead[1] + stlLead[0];
+  if (stlRev === btl || stlLead === btl) {
+    stlLead = "19";
+    stlRev = "91";
+  }
+  const stl = [stlLead, stlRev];
+
+  // 3. Tam Thủ Lô (TTL): 3 số vượng khí tam hợp khác BTL & STL
+  const excluded = new Set([btl, ...stl]);
+  const ttl = candidates
+    .filter(c => !excluded.has(c.number))
+    .slice(0, 3)
+    .map(c => c.number);
+
+  // 4. Dàn Lô 3 Càng 6 Số: Ghép càng Cửu Tinh (Trung Cung + Sinh Khí 9 & 8) với BTL & STL
+  const clawDigits = Array.from(new Set([
+    centerStar.toString(),
+    "9",
+    "8",
+    ((centerStar + 4) % 9 + 1).toString()
+  ])).slice(0, 3);
+
+  const threeClawSix = [
+    `${clawDigits[0]}${btl}`,
+    `${clawDigits[1]}${btl}`,
+    `${clawDigits[2]}${btl}`,
+    `${clawDigits[0]}${stl[0]}`,
+    `${clawDigits[1]}${stl[0]}`,
+    `${clawDigits[2]}${stl[1]}`
+  ];
+
+  const dd = String(day).padStart(2, "0");
+  const mm = String(month + 1).padStart(2, "0");
+  const formattedDate = `${dd}/${mm}/${year}`;
+  const dayOfWeek = VIETNAMESE_DAYS[targetDate.getDay()];
+  const province = XSMB_PROVINCES_BY_DAY[targetDate.getDay()];
+  const centerStarObj = STAR_CATALOG[centerStar];
+
+  return {
+    dateKey: `${year}-${mm}-${dd}`,
+    date: formattedDate,
+    dayOfWeek,
+    province,
+    ganZhi: `${stem} ${branch} (${elementShort})`,
+    nayin,
+    solarTerm: solarTermInfo.label,
+    centerStar,
+    isDuongDon: solarTermInfo.isDuongDon,
+    btl,
+    btlPalace: btlObj.palaceName,
+    btlRecentCount: btlObj.count,
+    stl,
+    ttl,
+    threeClawSix,
+    clawDigits,
+    cuuTinhScore: Number(Math.min(98.9, btlObj.score).toFixed(1)),
+    explanation: `Ngày ${stem} ${branch} (${nayin}) gặp Tiết ${solarTermInfo.label}, ${centerStarObj.name} nhập Trung Cung kết hợp Vận 9 Cửu Tử sinh tài. Quẻ Lạc Thư quy tụ BTL ${btl} (${btlObj.palaceName} vượng khí), STL ${stl.join("-")} trục Âm Dương đối đãi.`
+  };
+}
 
 // DỮ LIỆU THỰC TẾ LẤY TỪ XSKT.COM.VN KẾT HỢP VỚI CỬU TINH ĐỒ PHI TINH CHUYÊN SÂU
 const VERIFIED_XSKT_HISTORY = [
+  {
+    periodId: "xsmb-20261111",
+    date: "11/11/2026",
+    dayOfWeek: "Thứ Tư",
+    province: "Bắc Ninh",
+    ganZhi: "Canh Ngọ (Thổ)",
+    solarTerm: "Lập Đông (Âm Độn)",
+    centerStar: 2, // Nhị Hắc Cự Môn nhập trung cung
+    isDuongDon: false,
+    prizes: {
+      db: "74129",
+      g1: "97579",
+      g2: ["20960", "11980"],
+      g3: ["13449", "30793", "18746", "86606", "00972", "26471"],
+      g4: ["1760", "9505", "3676", "7568"],
+      g5: ["1494", "1478", "5404", "5724", "9888", "5597"],
+      g6: ["714", "093", "910"],
+      g7: ["51", "34", "12", "95"]
+    },
+    cuuTinhPick: {
+      btl: "58",
+      stl: ["39", "93"],
+      ttl: ["27", "72", "85"],
+      threeClawSix: ["258", "758", "958", "439", "839", "693"],
+      explanation: "Ngày Canh Ngọ (Lộ Bàng Thổ) gặp Tiết Lập Đông (Âm Độn), Nhị Hắc Thổ Tinh quy Trung Cung kết hợp Ly Cung Cửu Tử Hỏa vượng sinh Thổ. Quẻ quy tụ BTL 58 (Cung Cấn - Khôn tương phò), STL 39-93 trục Lạc Thư Âm Dương đối đãi."
+    }
+  },
   {
     periodId: "xsmb-20261110",
     date: "10/11/2026",
@@ -401,17 +615,27 @@ export default function App() {
   const [copiedToday, setCopiedToday] = useState(false);
   const [liveSourceStatus, setLiveSourceStatus] = useState({
     type: 'verified',
-    message: 'Đang kết nối dữ liệu chuẩn xác xskt.com.vn',
-    lastSync: '10/11/2026 - 18:35'
+    message: 'Đã cập nhật đầy đủ 27 giải mới nhất kỳ 11/11/2026 từ xskt.com.vn',
+    lastSync: '11/11/2026 - 18:35'
   });
 
-  // Đồng hồ đếm ngược trực tiếp đến 18h15 hôm nay
-  const [currentTime, setCurrentTime] = useState(new Date());
+  // Đồng hồ thời gian thực & tự động phát hiện qua ngày mới (00:00)
+  const [currentTime, setCurrentTime] = useState(() => new Date());
 
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Tự động tính toán bộ số Cửu Tinh mới mỗi khi qua ngày mới (dateKey thay đổi lúc 00:00)
+  const todayDateKey = `${currentTime.getFullYear()}-${String(currentTime.getMonth() + 1).padStart(2, '0')}-${String(currentTime.getDate()).padStart(2, '0')}`;
+
+  const todayForecast = useMemo(() => {
+    return generateDailyCuuTinhForecast(currentTime, historyData);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todayDateKey, historyData]);
 
   // Tính trạng thái khung giờ hôm nay
   const drawStatus = useMemo(() => {
@@ -464,13 +688,13 @@ export default function App() {
 
   // Hàm sao chép bộ số hôm nay
   const handleCopyTodaySet = () => {
-    const text = `🎯 BỘ SỐ CỬU TINH XSMB HÔM NAY (${TODAY_CONFIG.date} - ${TODAY_CONFIG.dayOfWeek}):\n` +
-      `✦ Bạch Thủ Lô: ${TODAY_CONFIG.btl}\n` +
-      `✦ Song Thủ Lô: ${TODAY_CONFIG.stl.join(' - ')}\n` +
-      `✦ Tam Thủ Lô: ${TODAY_CONFIG.ttl.join(' - ')}\n` +
-      `✦ Dàn 3 Càng 6 Số: ${TODAY_CONFIG.threeClawSix.join(', ')}\n` +
-      `✦ Đài Mở Thưởng: ${TODAY_CONFIG.province} (${TODAY_CONFIG.ganZhi})\n` +
-      `✦ Thuyết Cửu Tinh: ${TODAY_CONFIG.explanation}\n` +
+    const text = `🎯 BỘ SỐ CỬU TINH XSMB HÔM NAY (${todayForecast.date} - ${todayForecast.dayOfWeek}):\n` +
+      `✦ Bạch Thủ Lô: ${todayForecast.btl}\n` +
+      `✦ Song Thủ Lô: ${todayForecast.stl.join(' - ')}\n` +
+      `✦ Tam Thủ Lô: ${todayForecast.ttl.join(' - ')}\n` +
+      `✦ Dàn 3 Càng 6 Số: ${todayForecast.threeClawSix.join(', ')}\n` +
+      `✦ Đài Mở Thưởng: ${todayForecast.province} (${todayForecast.ganZhi})\n` +
+      `✦ Thuyết Cửu Tinh: ${todayForecast.explanation}\n` +
       `Nguồn: XSMB Cửu Tinh Analytics Live xskt.com.vn`;
 
     navigator.clipboard?.writeText(text);
@@ -501,11 +725,11 @@ export default function App() {
     }));
   }, [historyData]);
 
-  // Chỉ số hiệu suất tổng quan đối soát thắng/thua
+  // Chỉ số hiệu suất tổng quan đối soát thắng/thua & thống kê từng nhóm (BTL, STL, TTL, 3 Càng)
   const performanceStats = useMemo(() => {
     const totalPeriods = evaluatedHistory.length;
     const winPeriods = evaluatedHistory.filter(p => p.verification.isWin).length;
-    const winRate = totalPeriods > 0 ? ((winPeriods / totalPeriods) * 100).toFixed(1) : 0;
+    const winRate = totalPeriods > 0 ? ((winPeriods / totalPeriods) * 100).toFixed(1) : "0.0";
     const totalHits = evaluatedHistory.reduce((acc, curr) => acc + curr.verification.totalHits, 0);
 
     let streak = 0;
@@ -514,7 +738,58 @@ export default function App() {
       else break;
     }
 
-    return { totalPeriods, winPeriods, winRate, totalHits, streak };
+    // Thống kê Bạch Thủ Lô (BTL)
+    const btlWinPeriods = evaluatedHistory.filter(p => p.verification.btl.isWin).length;
+    const btlWinRate = totalPeriods > 0 ? ((btlWinPeriods / totalPeriods) * 100).toFixed(1) : "0.0";
+    const btlTotalHits = evaluatedHistory.reduce((acc, curr) => acc + curr.verification.btl.hits, 0);
+
+    // Thống kê Song Thủ Lô (STL)
+    const stlWinPeriods = evaluatedHistory.filter(p => p.verification.stl.isWin).length;
+    const stlWinRate = totalPeriods > 0 ? ((stlWinPeriods / totalPeriods) * 100).toFixed(1) : "0.0";
+    const stlTotalHits = evaluatedHistory.reduce((acc, curr) => acc + curr.verification.stl.totalHits, 0);
+
+    // Thống kê chuyên biệt Tam Thủ Lô (TTL)
+    const ttlWinPeriods = evaluatedHistory.filter(p => p.verification.ttl.isWin).length;
+    const ttlLosePeriods = totalPeriods - ttlWinPeriods;
+    const ttlWinRate = totalPeriods > 0 ? ((ttlWinPeriods / totalPeriods) * 100).toFixed(1) : "0.0";
+    const ttlTotalHits = evaluatedHistory.reduce((acc, curr) => acc + curr.verification.ttl.totalHits, 0);
+
+    let ttlStreak = 0;
+    for (let i = 0; i < evaluatedHistory.length; i++) {
+      if (evaluatedHistory[i].verification.ttl.isWin) ttlStreak++;
+      else break;
+    }
+
+    const recentTtlHits = evaluatedHistory
+      .filter(p => p.verification.ttl.isWin)
+      .slice(0, 4)
+      .map(p => ({
+        date: p.date.slice(0, 5),
+        hits: p.verification.ttl.list.filter(item => item.hits > 0)
+      }));
+
+    // Thống kê 3 Càng 6 Số
+    const threeClawWinPeriods = evaluatedHistory.filter(p => p.verification.threeClaw.isWin).length;
+    const threeClawWinRate = totalPeriods > 0 ? ((threeClawWinPeriods / totalPeriods) * 100).toFixed(1) : "0.0";
+
+    return {
+      totalPeriods,
+      winPeriods,
+      winRate,
+      totalHits,
+      streak,
+      btl: { winPeriods: btlWinPeriods, winRate: btlWinRate, totalHits: btlTotalHits },
+      stl: { winPeriods: stlWinPeriods, winRate: stlWinRate, totalHits: stlTotalHits },
+      ttl: {
+        winPeriods: ttlWinPeriods,
+        losePeriods: ttlLosePeriods,
+        winRate: ttlWinRate,
+        totalHits: ttlTotalHits,
+        streak: ttlStreak,
+        recentHits: recentTtlHits
+      },
+      threeClaw: { winPeriods: threeClawWinPeriods, winRate: threeClawWinRate }
+    };
   }, [evaluatedHistory]);
 
   // Tính tần suất và Điểm Cửu Tinh cho 100 số loto
@@ -602,7 +877,10 @@ export default function App() {
 
     for (const proxyUrl of proxies) {
       try {
-        const response = await fetch(proxyUrl, { cache: 'no-store' });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3500);
+        const response = await fetch(proxyUrl, { cache: 'no-store', signal: controller.signal });
+        clearTimeout(timeoutId);
         if (response.ok) {
           const text = await response.text();
           if (text && (text.includes('tbl-xs') || text.includes('xsmb') || text.includes('ĐB'))) {
@@ -680,31 +958,31 @@ export default function App() {
       
       {/* Header Bar */}
       <header className="sticky top-0 z-40 border-b border-slate-800 bg-[#030712]/95 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-2">
           
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-300 p-[1px] flex items-center justify-center shadow-lg shadow-amber-500/10">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-300 p-[1px] flex items-center justify-center shadow-lg shadow-amber-500/10 shrink-0">
               <div className="w-full h-full bg-slate-950 rounded-[11px] flex items-center justify-center">
                 <Compass className="w-5 h-5 text-amber-400" />
               </div>
             </div>
             <div>
-              <div className="flex items-center space-x-2">
-                <h1 className="text-lg sm:text-xl font-black bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 bg-clip-text text-transparent">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-base sm:text-xl font-black bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 bg-clip-text text-transparent">
                   XSMB CỬU TINH PHI TINH ĐỒ
                 </h1>
                 <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
                   <Radio className="w-2.5 h-2.5 text-emerald-400 animate-pulse" />
-                  Live xskt.com.vn
+                  Auto Rollover 00:00
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-400 hidden sm:block">
                 Lạc Thư Ma Phương • Cửu Tinh Quản Nhật • Đối Soát 27 Giải Miền Bắc
               </p>
             </div>
           </div>
 
-          <div className="flex items-center space-x-2 sm:space-x-3">
+          <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
             <a
               href="https://xskt.com.vn/xsmb"
               target="_blank"
@@ -743,7 +1021,7 @@ export default function App() {
           {/* Header Today Section */}
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-amber-500/20 gap-3">
             <div className="flex items-center space-x-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-400 via-amber-500 to-yellow-300 p-0.5 shadow-lg shadow-amber-500/20 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-400 via-amber-500 to-yellow-300 p-0.5 shadow-lg shadow-amber-500/20 flex items-center justify-center shrink-0">
                 <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
                   <Flame className="w-6 h-6 text-amber-400 fill-amber-400 animate-pulse" />
                 </div>
@@ -751,20 +1029,23 @@ export default function App() {
 
               <div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-lg sm:text-xl font-black bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-500 bg-clip-text text-transparent">
-                    BỘ SỐ CỬU TINH HÔM NAY • {TODAY_CONFIG.date} ({TODAY_CONFIG.dayOfWeek})
+                  <h2 className="text-base sm:text-xl font-black bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-500 bg-clip-text text-transparent">
+                    BỘ SỐ CỬU TINH HÔM NAY • {todayForecast.date} ({todayForecast.dayOfWeek})
                   </h2>
                   <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${drawStatus.color} flex items-center gap-1.5`}>
                     <Radio className="w-3 h-3 animate-pulse" />
                     {drawStatus.badge}
                   </span>
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                    Tự động cập nhật 00:00 mỗi ngày
+                  </span>
                 </div>
                 <p className="text-xs text-slate-300 mt-1 flex flex-wrap items-center gap-2">
                   <span>Khung Giờ Khóa Số: <strong className="text-amber-400">18h00 - 18h30</strong></span>
                   <span className="text-slate-600">•</span>
-                  <span>Đài Mở Thưởng: <strong className="text-cyan-300">{TODAY_CONFIG.province}</strong></span>
+                  <span>Đài Mở Thưởng: <strong className="text-cyan-300">{todayForecast.province}</strong></span>
                   <span className="text-slate-600">•</span>
-                  <span className="font-mono text-amber-300">{TODAY_CONFIG.ganZhi} ({TODAY_CONFIG.solarTerm})</span>
+                  <span className="font-mono text-amber-300">{todayForecast.ganZhi} ({todayForecast.solarTerm})</span>
                 </p>
               </div>
             </div>
@@ -772,7 +1053,9 @@ export default function App() {
             {/* Quick Actions & Countdown */}
             <div className="flex items-center space-x-2 sm:space-x-3 self-start md:self-auto">
               <div className="px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-right">
-                <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Trạng Thái</span>
+                <span className="text-[10px] text-slate-400 uppercase tracking-wider block">
+                  {currentTime.toLocaleTimeString('vi-VN')}
+                </span>
                 <span className="text-xs font-mono font-bold text-amber-300">
                   {drawStatus.countdown}
                 </span>
@@ -815,22 +1098,22 @@ export default function App() {
               <div className="my-3 flex items-center justify-between">
                 <div>
                   <div className="text-5xl font-black font-mono text-amber-300 tracking-wider drop-shadow-md">
-                    {TODAY_CONFIG.btl}
+                    {todayForecast.btl}
                   </div>
                   <span className="text-[11px] text-slate-400 mt-1 block">
-                    Cung Cát Tinh Cấn Thổ vượng khí
+                    {todayForecast.btlPalace} vượng khí
                   </span>
                 </div>
                 <div className="text-right">
                   <span className="text-[10px] text-slate-400 uppercase block">Điểm Cửu Tinh</span>
                   <span className="text-2xl font-black font-mono text-emerald-400">
-                    {TODAY_CONFIG.cuuTinhScore}
+                    {todayForecast.cuuTinhScore}
                   </span>
                 </div>
               </div>
 
               <div className="pt-2 border-t border-slate-800/80 text-[11px] text-amber-200/80 flex items-center justify-between">
-                <span>Nhịp rơi 10 kỳ: <strong className="text-white font-mono">4 lần</strong></span>
+                <span>Nhịp rơi gần đây: <strong className="text-white font-mono">{todayForecast.btlRecentCount} lần</strong></span>
                 <span className="text-emerald-400 font-bold">Chớm Nổ Cát</span>
               </div>
             </div>
@@ -849,7 +1132,7 @@ export default function App() {
 
               <div className="my-3 flex items-center justify-between">
                 <div className="flex items-center gap-2.5 font-mono">
-                  {TODAY_CONFIG.stl.map((num, idx) => (
+                  {todayForecast.stl.map((num, idx) => (
                     <div key={idx} className="flex items-center gap-2">
                       <span className="text-3xl font-black text-cyan-300 bg-cyan-950/70 border border-cyan-500/40 px-3 py-1 rounded-xl shadow-inner">
                         {num}
@@ -879,7 +1162,7 @@ export default function App() {
               </div>
 
               <div className="my-3 flex items-center justify-around font-mono font-black text-2xl text-purple-300">
-                {TODAY_CONFIG.ttl.map((num, idx) => (
+                {todayForecast.ttl.map((num, idx) => (
                   <span key={idx} className="px-2.5 py-1 rounded-xl bg-purple-950/70 border border-purple-500/30">
                     {num}
                   </span>
@@ -905,7 +1188,7 @@ export default function App() {
               </div>
 
               <div className="my-2.5 grid grid-cols-3 gap-1.5 font-mono font-bold text-xs text-center">
-                {TODAY_CONFIG.threeClawSix.map((claw, idx) => (
+                {todayForecast.threeClawSix.map((claw, idx) => (
                   <span
                     key={idx}
                     className="py-1.5 rounded-lg bg-rose-950/50 border border-rose-500/30 text-rose-200 hover:bg-rose-500/20 transition-all"
@@ -917,7 +1200,7 @@ export default function App() {
 
               <div className="pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 flex items-center justify-between">
                 <span>Càng Cửu Tinh:</span>
-                <span className="text-rose-300 font-bold">2 - 7 - 9 (Hỏa Sinh Thổ)</span>
+                <span className="text-rose-300 font-bold">{todayForecast.clawDigits.join(' - ')} (Sinh Khí)</span>
               </div>
             </div>
 
@@ -928,12 +1211,12 @@ export default function App() {
             <div className="flex items-start sm:items-center gap-2">
               <Compass className="w-4 h-4 text-amber-400 shrink-0 mt-0.5 sm:mt-0" />
               <p className="text-slate-300 text-[11px] sm:text-xs">
-                <strong className="text-amber-300 font-bold">Thuyết Cửu Tinh Hôm Nay: </strong>
-                {TODAY_CONFIG.explanation}
+                <strong className="text-amber-300 font-bold">Thuyết Cửu Tinh Hôm Nay ({todayForecast.date}): </strong>
+                {todayForecast.explanation}
               </p>
             </div>
             <span className="text-[11px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2.5 py-1 rounded-lg shrink-0 text-center">
-              Tự Động Đối Soát Sau 18h35
+              Tự Động Cập Nhật 00:00 & Đối Soát 18h35
             </span>
           </div>
 
@@ -946,7 +1229,7 @@ export default function App() {
               <Compass className="w-5 h-5 animate-[spin_12s_linear_infinite]" />
             </div>
             <div>
-              <div className="flex items-center space-x-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
                   Cửu Tinh Đương Nhật: {STAR_CATALOG[currentPeriod.centerStar].name}
                 </span>
@@ -957,6 +1240,7 @@ export default function App() {
               </div>
               <p className="text-xs sm:text-sm text-slate-300 mt-0.5">
                 Vận 9 Tam Nguyên Cửu Vận • Tinh quỹ: <strong className="text-cyan-300">{currentPeriod.isDuongDon ? 'Dương Độn (Thuận)' : 'Âm Độn (Nghịch)'}</strong> • Đài mở: <strong className="text-amber-300">{currentPeriod.province}</strong>
+                <span className="block sm:inline sm:ml-2 text-[11px] text-emerald-400/90">({liveSourceStatus.message})</span>
               </p>
             </div>
           </div>
@@ -1034,7 +1318,7 @@ export default function App() {
           >
             <History className="w-4 h-4" />
             <span>Đối Soát Thắng / Thua Theo Kỳ</span>
-            <span className="ml-1 text-[10px] bg-emerald-500 text-slate-950 px-1.5 py-0.2 rounded-full font-black">
+            <span className="ml-1 text-[10px] bg-emerald-500 text-slate-950 px-1.5 py-0.5 rounded-full font-black">
               {performanceStats.winRate}%
             </span>
           </button>
@@ -1061,7 +1345,7 @@ export default function App() {
               
               {/* MA TRẬN LẠC THƯ 3X3 */}
               <div className="lg:col-span-7 rounded-2xl border border-slate-800 bg-[#070c18] p-5 shadow-2xl">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-800">
                   <div>
                     <h3 className="text-base font-bold text-white flex items-center gap-2">
                       <Compass className="w-5 h-5 text-amber-400" />
@@ -1090,11 +1374,11 @@ export default function App() {
                             : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
                         }`}
                       >
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">
                             {cell.palace.name}
                           </span>
-                          <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded ${cell.palace.color} bg-slate-950/60`}>
+                          <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded shrink-0 ${cell.palace.color} bg-slate-950/60`}>
                             {cell.palace.element}
                           </span>
                         </div>
@@ -1286,7 +1570,7 @@ export default function App() {
               
               {/* BẢNG 27 GIẢI CHUẨN XSKT */}
               <div className="lg:col-span-8 rounded-2xl border border-slate-800 bg-[#070c18] p-5 shadow-2xl">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-800">
                   <div>
                     <h3 className="text-base font-bold text-white flex items-center gap-2">
                       <Award className="w-4 h-4 text-amber-400" />
@@ -1333,7 +1617,7 @@ export default function App() {
                   {/* GIẢI NHÌ */}
                   <div className="py-2.5 flex items-center justify-between px-2">
                     <span className="text-xs font-bold text-slate-400 w-24">Giải Nhì</span>
-                    <div className="flex gap-4 font-mono font-bold text-lg">
+                    <div className="flex flex-wrap justify-end gap-3 sm:gap-4 font-mono font-bold text-lg">
                       {currentPeriod.prizes.g2.map((c, i) => (
                         <span key={i} className={`px-2.5 py-0.5 rounded ${getPrizeHighlight(c)}`}>{c}</span>
                       ))}
@@ -1342,18 +1626,18 @@ export default function App() {
 
                   {/* GIẢI BA */}
                   <div className="py-2.5 flex items-center justify-between px-2">
-                    <span className="text-xs font-bold text-slate-400 w-24">Giải Ba</span>
-                    <div className="grid grid-cols-3 gap-2 font-mono font-bold text-base text-right">
+                    <span className="text-xs font-bold text-slate-400 w-24 shrink-0">Giải Ba</span>
+                    <div className="grid grid-cols-3 gap-2 font-mono font-bold text-sm sm:text-base text-right">
                       {currentPeriod.prizes.g3.map((c, i) => (
-                        <span key={i} className={`px-2.5 py-0.5 rounded ${getPrizeHighlight(c)}`}>{c}</span>
+                        <span key={i} className={`px-2 py-0.5 rounded ${getPrizeHighlight(c)}`}>{c}</span>
                       ))}
                     </div>
                   </div>
 
                   {/* GIẢI TƯ */}
                   <div className="py-2.5 flex items-center justify-between px-2">
-                    <span className="text-xs font-bold text-slate-400 w-24">Giải Tư</span>
-                    <div className="flex gap-4 font-mono font-bold text-base">
+                    <span className="text-xs font-bold text-slate-400 w-24 shrink-0">Giải Tư</span>
+                    <div className="flex flex-wrap justify-end gap-2 sm:gap-4 font-mono font-bold text-sm sm:text-base">
                       {currentPeriod.prizes.g4.map((c, i) => (
                         <span key={i} className={`px-2.5 py-0.5 rounded ${getPrizeHighlight(c)}`}>{c}</span>
                       ))}
@@ -1362,18 +1646,18 @@ export default function App() {
 
                   {/* GIẢI NĂM */}
                   <div className="py-2.5 flex items-center justify-between px-2">
-                    <span className="text-xs font-bold text-slate-400 w-24">Giải Năm</span>
-                    <div className="grid grid-cols-3 gap-2 font-mono font-bold text-base text-right">
+                    <span className="text-xs font-bold text-slate-400 w-24 shrink-0">Giải Năm</span>
+                    <div className="grid grid-cols-3 gap-2 font-mono font-bold text-sm sm:text-base text-right">
                       {currentPeriod.prizes.g5.map((c, i) => (
-                        <span key={i} className={`px-2.5 py-0.5 rounded ${getPrizeHighlight(c)}`}>{c}</span>
+                        <span key={i} className={`px-2 py-0.5 rounded ${getPrizeHighlight(c)}`}>{c}</span>
                       ))}
                     </div>
                   </div>
 
                   {/* GIẢI SÁU */}
                   <div className="py-2.5 flex items-center justify-between px-2">
-                    <span className="text-xs font-bold text-slate-400 w-24">Giải Sáu</span>
-                    <div className="flex gap-4 font-mono font-bold text-base">
+                    <span className="text-xs font-bold text-slate-400 w-24 shrink-0">Giải Sáu</span>
+                    <div className="flex gap-3 sm:gap-4 font-mono font-bold text-base">
                       {currentPeriod.prizes.g6.map((c, i) => (
                         <span key={i} className={`px-2.5 py-0.5 rounded ${getPrizeHighlight(c)}`}>{c}</span>
                       ))}
@@ -1382,8 +1666,8 @@ export default function App() {
 
                   {/* GIẢI BẢY */}
                   <div className="py-2.5 flex items-center justify-between px-2">
-                    <span className="text-xs font-bold text-slate-400 w-24">Giải Bảy</span>
-                    <div className="flex gap-4 font-mono font-bold text-base">
+                    <span className="text-xs font-bold text-slate-400 w-24 shrink-0">Giải Bảy</span>
+                    <div className="flex gap-3 sm:gap-4 font-mono font-bold text-base">
                       {currentPeriod.prizes.g7.map((c, i) => (
                         <span key={i} className={`px-2.5 py-0.5 rounded ${getPrizeHighlight(c)}`}>{c}</span>
                       ))}
@@ -1431,7 +1715,7 @@ export default function App() {
                                     return (
                                       <span
                                         key={idx}
-                                        className={`px-1.5 py-0.2 rounded ${
+                                        className={`px-1.5 py-0.5 rounded ${
                                           isMatch
                                             ? 'bg-amber-500/35 text-amber-300 border border-amber-400 font-black'
                                             : 'text-slate-200'
@@ -1510,11 +1794,11 @@ export default function App() {
         {activeTab === 'verify' && (
           <section className="space-y-5">
             
-            {/* KPI Performance Summary */}
+            {/* KPI Performance Summary Tổng Hợp */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="rounded-2xl border border-slate-800 bg-[#070c18] p-4">
                 <span className="text-xs text-slate-400 flex items-center gap-1">
-                  <Percent className="w-3.5 h-3.5 text-emerald-400" /> Tỷ lệ thắng (Winrate)
+                  <Percent className="w-3.5 h-3.5 text-emerald-400" /> Tỷ lệ thắng tổng (Winrate)
                 </span>
                 <div className="text-2xl sm:text-3xl font-black font-mono text-emerald-400 mt-1">
                   {performanceStats.winRate}%
@@ -1546,12 +1830,92 @@ export default function App() {
 
               <div className="rounded-2xl border border-slate-800 bg-[#070c18] p-4">
                 <span className="text-xs text-slate-400 flex items-center gap-1">
-                  <Activity className="w-3.5 h-3.5 text-purple-400" /> Chuẩn đối soát
+                  <Activity className="w-3.5 h-3.5 text-purple-400" /> Hiệu suất BTL / STL / TTL
                 </span>
-                <div className="text-xl sm:text-2xl font-black font-mono text-purple-300 mt-1">
-                  27 Giải Live
+                <div className="text-sm sm:text-base font-black font-mono text-purple-300 mt-2 flex flex-wrap gap-1.5">
+                  <span className="text-amber-400">{performanceStats.btl.winRate}%</span>
+                  <span className="text-slate-600">/</span>
+                  <span className="text-cyan-400">{performanceStats.stl.winRate}%</span>
+                  <span className="text-slate-600">/</span>
+                  <span className="text-purple-400">{performanceStats.ttl.winRate}%</span>
                 </div>
-                <span className="text-[11px] text-slate-500">GĐB.slice(-3) & 2D.slice(-2)</span>
+                <span className="text-[11px] text-slate-500 mt-1 block">
+                  Nháy: {performanceStats.btl.totalHits} BTL • {performanceStats.stl.totalHits} STL • {performanceStats.ttl.totalHits} TTL
+                </span>
+              </div>
+            </div>
+
+            {/* THỐNG KÊ CHUYÊN BIỆT THẮNG / THUA TAM THỦ LÔ (TTL) */}
+            <div className="rounded-2xl border border-purple-500/40 bg-gradient-to-r from-purple-950/35 via-[#070c18] to-[#070c18] p-5 shadow-xl">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-purple-500/20">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-300">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm sm:text-base font-black text-purple-300 uppercase tracking-wider">
+                      Thống Kê Hiệu Suất Tam Thủ Lô (TTL - Bộ 3 Số Tam Hợp)
+                    </h3>
+                    <p className="text-[11px] text-slate-400">
+                      Đối soát tỷ lệ nổ, số kỳ thắng/thua và tổng số nháy riêng cho dàn Tam Thủ Lô qua {performanceStats.totalPeriods} kỳ gần nhất
+                    </p>
+                  </div>
+                </div>
+                <span className="text-xs font-mono font-bold px-3 py-1 rounded-full bg-purple-500/20 text-purple-200 border border-purple-500/40 self-start sm:self-auto">
+                  Chuỗi nổ TTL: {performanceStats.ttl.streak} kỳ liên tiếp
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mt-4">
+                <div className="rounded-xl bg-slate-950/80 border border-purple-500/25 p-3.5">
+                  <span className="text-[11px] text-slate-400 block">Tỷ Lệ Thắng Tam Thủ Lô</span>
+                  <div className="text-2xl sm:text-3xl font-black font-mono text-purple-400 mt-1">
+                    {performanceStats.ttl.winRate}%
+                  </div>
+                  <span className="text-[11px] text-emerald-400 font-medium">
+                    Trung bình {(performanceStats.ttl.totalHits / Math.max(1, performanceStats.totalPeriods)).toFixed(2)} nháy/kỳ
+                  </span>
+                </div>
+
+                <div className="rounded-xl bg-slate-950/80 border border-purple-500/25 p-3.5">
+                  <span className="text-[11px] text-slate-400 block">Số Kỳ Thắng / Thua TTL</span>
+                  <div className="text-2xl sm:text-3xl font-black font-mono mt-1 flex items-center gap-2">
+                    <span className="text-emerald-400">{performanceStats.ttl.winPeriods}T</span>
+                    <span className="text-slate-600 text-lg">-</span>
+                    <span className="text-rose-400">{performanceStats.ttl.losePeriods}B</span>
+                  </div>
+                  <span className="text-[11px] text-slate-500">
+                    Trên tổng số {performanceStats.totalPeriods} kỳ mở thưởng
+                  </span>
+                </div>
+
+                <div className="rounded-xl bg-slate-950/80 border border-purple-500/25 p-3.5">
+                  <span className="text-[11px] text-slate-400 block">Tổng Nháy Tam Thủ Lô</span>
+                  <div className="text-2xl sm:text-3xl font-black font-mono text-purple-300 mt-1">
+                    {performanceStats.ttl.totalHits} nháy
+                  </div>
+                  <span className="text-[11px] text-slate-500">
+                    Chiếm {performanceStats.totalHits > 0 ? ((performanceStats.ttl.totalHits / performanceStats.totalHits) * 100).toFixed(0) : 0}% tổng nháy toàn hệ thống
+                  </span>
+                </div>
+
+                <div className="rounded-xl bg-slate-950/80 border border-purple-500/25 p-3.5">
+                  <span className="text-[11px] text-slate-400 block mb-1.5">Các Số TTL Nổ Gần Nhất</span>
+                  {performanceStats.ttl.recentHits.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5 font-mono text-[11px]">
+                      {performanceStats.ttl.recentHits.map((entry, idx) => (
+                        <span
+                          key={idx}
+                          className="px-2 py-0.5 rounded bg-purple-500/20 border border-purple-400/40 text-purple-200 font-bold"
+                        >
+                          {entry.date}: {entry.hits.map(h => `${h.number}(${h.hits}n)`).join(', ')}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-slate-500 italic">Chưa có dữ liệu nổ</span>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -1562,7 +1926,8 @@ export default function App() {
                   <tr>
                     <th className="py-3.5 px-4">Ngày / Đài Quay</th>
                     <th className="py-3.5 px-4">Sao Cửu Tinh & Can Chi</th>
-                    <th className="py-3.5 px-4">Bộ Số Cửu Tinh (BTL/STL)</th>
+                    <th className="py-3.5 px-4">Bộ Số Cửu Tinh (BTL / STL)</th>
+                    <th className="py-3.5 px-4">Tam Thủ Lô (TTL)</th>
                     <th className="py-3.5 px-4">Dàn 3 Càng (6 Số)</th>
                     <th className="py-3.5 px-4 text-center">GĐB Thực Tế</th>
                     <th className="py-3.5 px-4 text-center">Tổng Nháy</th>
@@ -1617,13 +1982,30 @@ export default function App() {
                         </td>
 
                         <td className="py-3.5 px-4">
+                          <div className="flex flex-wrap items-center gap-1 font-mono text-xs">
+                            {verification.ttl.list.map((ttlItem, tIdx) => (
+                              <span
+                                key={tIdx}
+                                className={`px-2 py-0.5 rounded border ${
+                                  ttlItem.hits > 0
+                                    ? 'bg-purple-500 text-white font-bold border-purple-300 shadow-sm'
+                                    : 'bg-slate-900 border-slate-800 text-purple-300/80'
+                                }`}
+                              >
+                                {ttlItem.number}{ttlItem.hits > 0 ? `(${ttlItem.hits}n)` : ''}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-4">
                           <div className="flex flex-wrap gap-1 font-mono text-[11px]">
                             {cuuTinhPick.threeClawSix.map((c, cIdx) => {
                               const isHit = c === verification.analysis.special3D;
                               return (
                                 <span
                                   key={cIdx}
-                                  className={`px-1.5 py-0.2 rounded border ${
+                                  className={`px-1.5 py-0.5 rounded border ${
                                     isHit
                                       ? 'bg-rose-500 text-white font-black border-rose-300 animate-pulse'
                                       : 'bg-slate-900 border-slate-800 text-slate-400'
@@ -1674,6 +2056,11 @@ export default function App() {
                             {verification.stl.isWin && (
                               <div className="text-cyan-400">
                                 • STL ăn {verification.stl.totalHits} nháy ({verification.stl.list.filter(s => s.hits > 0).map(s => `${s.number}:${s.hits}`).join(', ')})
+                              </div>
+                            )}
+                            {verification.ttl.isWin && (
+                              <div className="text-purple-400 font-semibold">
+                                • TTL ăn {verification.ttl.totalHits} nháy ({verification.ttl.list.filter(t => t.hits > 0).map(t => `${t.number}:${t.hits}`).join(', ')})
                               </div>
                             )}
                             {verification.threeClaw.isWin && (
@@ -1841,7 +2228,7 @@ export default function App() {
               </div>
               <button
                 onClick={() => setShowExplanationModal(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg bg-slate-900 border border-slate-800"
+                className="text-slate-400 hover:text-white p-1.5 rounded-lg bg-slate-900 border border-slate-800"
               >
                 ✕
               </button>
@@ -1886,7 +2273,7 @@ export default function App() {
       )}
 
       {/* Footer */}
-      <footer className="mt-12 border-t border-slate-800 bg-[#02050c] py-6 text-center text-xs text-slate-500">
+      <footer className="mt-12 border-t border-slate-800 bg-[#02050c] py-6 text-center text-xs text-slate-500 px-4">
         <p className="font-medium text-slate-400">
           XSMB Cửu Tinh Analytics • Ứng dụng Huyền Không Phi Tinh & Lạc Thư Ma Phương kết hợp đối soát 27 giải từ <a href="https://xskt.com.vn/xsmb" target="_blank" rel="noreferrer" className="text-amber-400 hover:underline">xskt.com.vn</a>
         </p>
